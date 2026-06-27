@@ -45,6 +45,9 @@ INLINE u8 Memory::Read(u16 address, bool block_transfer)
     u8 bank = m_mpr[mpr_index];
     u16 offset = address & 0x1FFF;
 
+    if (m_access_tracking_enabled)
+        TrackAccess(bank, offset, MEMORY_ACCESS_READ);
+
 #if !defined(GG_DISABLE_DISASSEMBLER)
     if (m_huc6280->HasPhysicalMemoryBreakpoints(true))
         CheckPhysicalMemoryBreakpoints(bank, offset, true);
@@ -212,6 +215,9 @@ INLINE void Memory::Write(u16 address, u8 value, bool block_transfer)
     u8 mpr_index = address >> 13;
     u8 bank = m_mpr[mpr_index];
     u16 offset = address & 0x1FFF;
+
+    if (m_access_tracking_enabled)
+        TrackAccess(bank, offset, MEMORY_ACCESS_WRITE);
 
 #if !defined(GG_DISABLE_DISASSEMBLER)
     if (m_huc6280->HasPhysicalMemoryBreakpoints(false))
@@ -599,5 +605,43 @@ INLINE void Memory::CheckPhysicalMemoryBreakpoints(u8 bank, u32 offset, bool rea
     }
 }
 #endif
+
+INLINE void Memory::TrackAccess(u8 bank, u16 offset, u8 flag)
+{
+    switch (GetBankType(bank))
+    {
+        case MEMORY_BANK_TYPE_WRAM:
+        {
+            u32 addr = m_media->IsSGX() ? (((u32)(bank - 0xF8)) * 0x2000) + offset : offset;
+            if (addr < sizeof(m_wram_access))
+                m_wram_access[addr] |= flag;
+            break;
+        }
+        case MEMORY_BANK_TYPE_CARD_RAM:
+        {
+            if (m_card_ram_size == 0)
+                break;
+            u32 addr = (((u32)(bank - m_card_ram_start)) * 0x2000) + offset;
+            addr %= m_card_ram_size;
+            m_card_ram_access[addr] |= flag;
+            break;
+        }
+        case MEMORY_BANK_TYPE_CDROM_RAM:
+        {
+            u32 addr = (((u32)(bank - 0x80)) * 0x2000) + offset;
+            if (addr < sizeof(m_cdrom_ram_access))
+                m_cdrom_ram_access[addr] |= flag;
+            break;
+        }
+        case MEMORY_BANK_TYPE_BACKUP_RAM:
+        {
+            if (offset < sizeof(m_backup_ram_access))
+                m_backup_ram_access[offset] |= flag;
+            break;
+        }
+        default:
+            break;
+    }
+}
 
 #endif /* MEMORY_INLINE_H */

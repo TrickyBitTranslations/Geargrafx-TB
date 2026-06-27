@@ -50,6 +50,13 @@ public:
         MEMORY_BANK_TYPE_UNUSED
     };
 
+    enum MemoryAccessFlag
+    {
+        MEMORY_ACCESS_READ  = 0x01,
+        MEMORY_ACCESS_WRITE = 0x02,
+        MEMORY_ACCESS_EXEC  = 0x04
+    };
+
 public:
     Memory(HuC6260* huc6260, HuC6202* huc6202, HuC6280* huc6280, Media* media, Input* input, Audio* audio, CdRom* cdrom);
     ~Memory();
@@ -94,6 +101,13 @@ public:
     bool IsBackupRamUsed();
     void UpdateBackupRam(bool enable);
     MemoryBankType GetBankType(u8 bank);
+    void ResetAccessMap();
+    void SetAccessTrackingEnabled(bool enabled);
+    bool IsAccessTrackingEnabled();
+    u8* GetWorkingRAMAccess();
+    u8* GetCardRAMAccess();
+    u8* GetCDROMRAMAccess();
+    u8* GetBackupRAMAccess();
     void SaveRam(std::ostream &file);
     bool LoadRam(std::istream &file, s32 file_size);
     void SaveState(std::ostream& stream);
@@ -104,6 +118,7 @@ private:
 #if !defined(GG_DISABLE_DISASSEMBLER)
     void CheckPhysicalMemoryBreakpoints(u8 bank, u32 offset, bool read);
 #endif
+    void TrackAccess(u8 bank, u16 offset, u8 flag);
 
 private:
     HuC6260* m_huc6260;
@@ -123,6 +138,11 @@ private:
     u8 m_card_ram[0x30000] = {};
     u8 m_cdrom_ram[0x10000] = {};
     u8 m_backup_ram[0x2000] = {};
+    u8 m_wram_access[0x8000] = {};
+    u8 m_card_ram_access[0x30000] = {};
+    u8 m_cdrom_ram_access[0x10000] = {};
+    u8 m_backup_ram_access[0x2000] = {};
+    bool m_access_tracking_enabled;
     u32 m_cdrom_ram_size;
     u32 m_card_ram_size;
     u8 m_card_ram_start;

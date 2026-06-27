@@ -458,6 +458,46 @@ json McpServer::BuildToolList()
     });
 
     tools.push_back({
+        {"name", "reset_access_map"},
+        {"title", "Reset Access Map"},
+        {"description", "Clear the read/write access map and (re)enable access tracking. Then play through every context (boot, menus, battle, transitions); dump_access_map then reports which physical RAM bytes were never read/written - a reliable way to find genuinely-free RAM without juggling breakpoints."},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", {
+                {"enable", {
+                    {"type", "boolean"},
+                    {"description", "Enable tracking after clearing (default true). Pass false to clear and stop tracking."}
+                }}
+            }},
+            {"additionalProperties", false}
+        }}
+    });
+
+    tools.push_back({
+        {"name", "dump_access_map"},
+        {"title", "Dump Access Map"},
+        {"description", "Report runs of physical RAM bytes matching an access predicate since the last reset_access_map. To find free RAM use mode 'untouched' (never read nor written) or 'never_written' (safe for injected persistent code/data). Returned offsets are byte offsets directly usable with read_memory/set_breakpoint for the same area. Tracked areas: WRAM, ZP, CARD RAM, CDROM RAM, BRAM."},
+        {"inputSchema", {
+            {"type", "object"},
+            {"properties", {
+                {"area", {
+                    {"type", "integer"},
+                    {"description", "Memory area ID from list_memory_areas (RAM areas only)."}
+                }},
+                {"mode", {
+                    {"type", "string"},
+                    {"description", "untouched | never_written | never_read | touched | read | written | readonly | writeonly. Default untouched."}
+                }},
+                {"min_length", {
+                    {"type", "integer"},
+                    {"description", "Only report runs at least this many bytes long. Default 1."}
+                }}
+            }},
+            {"required", json::array({"area"})}
+        }}
+    });
+
+    tools.push_back({
         {"name", "write_memory"},
         {"title", "Write Memory"},
         {"description", "Write hex bytes to memory area/tab by physical 0-based addressable-unit offset."},
@@ -2218,6 +2258,20 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
 
         m_debugAdapter.WriteMemoryArea(area, offset, data);
         return {{"success", true}, {"area", area}, {"offset", offsetStr}, {"bytes_written", data.size()}};
+    }
+    else if (normalizedTool == "reset_access_map")
+    {
+        bool enable = arguments.value("enable", true);
+        return m_debugAdapter.AccessMapReset(enable);
+    }
+    else if (normalizedTool == "dump_access_map")
+    {
+        int area = arguments["area"];
+        std::string mode = arguments.value("mode", std::string("untouched"));
+        u32 min_length = 1;
+        if (arguments.contains("min_length"))
+            min_length = (u32)arguments["min_length"].get<int>();
+        return m_debugAdapter.AccessMapDump(area, mode, min_length);
     }
     // Registers
     else if (normalizedTool == "write_huc6280_register")

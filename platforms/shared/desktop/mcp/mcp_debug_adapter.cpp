@@ -313,6 +313,123 @@ void DebugAdapter::WriteMemoryArea(int area, u32 offset, const std::vector<u8>& 
     }
 }
 
+u8* DebugAdapter::GetAccessMapForArea(int area, u32& size)
+{
+    Memory* memory = m_core->GetMemory();
+    Media* media = m_core->GetMedia();
+    bool is_sgx = media->IsSGX();
+    size = 0;
+
+    switch (area)
+    {
+        case MEMORY_EDITOR_RAM:
+            size = 0x2000 * (is_sgx ? 4 : 1);
+            return memory->GetWorkingRAMAccess();
+        case MEMORY_EDITOR_ZERO_PAGE:
+            size = 0x100;
+            return memory->GetWorkingRAMAccess();
+        case MEMORY_EDITOR_CARD_RAM:
+            size = memory->GetCardRAMSize();
+            return memory->GetCardRAMAccess();
+        case MEMORY_EDITOR_CDROM_RAM:
+            if (media->IsCDROM())
+            {
+                size = memory->GetCDROMRAMSize();
+                return memory->GetCDROMRAMAccess();
+            }
+            return NULL;
+        case MEMORY_EDITOR_BACKUP_RAM:
+            size = memory->GetBackupRAMSize();
+            return memory->GetBackupRAMAccess();
+        default:
+            return NULL;
+    }
+}
+
+json DebugAdapter::AccessMapReset(bool enable)
+{
+    Memory* memory = m_core->GetMemory();
+    memory->ResetAccessMap();
+    memory->SetAccessTrackingEnabled(enable);
+
+    json result;
+    result["success"] = true;
+    result["tracking_enabled"] = memory->IsAccessTrackingEnabled();
+    return result;
+}
+
+static bool AccessPredicate(u8 flags, const std::string& mode)
+{
+    bool r = (flags & Memory::MEMORY_ACCESS_READ) != 0;
+    bool w = (flags & Memory::MEMORY_ACCESS_WRITE) != 0;
+
+    if (mode == "touched")       return r || w;
+    if (mode == "read")          return r;
+    if (mode == "written")       return w;
+    if (mode == "readonly")      return r && !w;
+    if (mode == "writeonly")     return w && !r;
+    if (mode == "never_written") return !w;
+    if (mode == "never_read")    return !r;
+    // default: "untouched"
+    return !r && !w;
+}
+
+json DebugAdapter::AccessMapDump(int area, const std::string& mode, u32 min_length)
+{
+    json result;
+    u32 size = 0;
+    u8* amap = GetAccessMapForArea(area, size);
+
+    if (amap == NULL || size == 0)
+    {
+        result["error"] = "Area is not access-tracked (only WRAM, ZP, CARD RAM, CDROM RAM, BRAM).";
+        return result;
+    }
+
+    if (min_length == 0)
+        min_length = 1;
+
+    json runs = json::array();
+    u32 run_start = 0;
+    u32 matched = 0;
+    bool in_run = false;
+
+    for (u32 i = 0; i <= size; i++)
+    {
+        bool match = (i < size) && AccessPredicate(amap[i], mode);
+        if (match)
+            matched++;
+
+        if (match && !in_run)
+        {
+            in_run = true;
+            run_start = i;
+        }
+        else if (!match && in_run)
+        {
+            u32 len = i - run_start;
+            if (len >= min_length)
+            {
+                json run;
+                run["offset"] = run_start;
+                run["length"] = len;
+                runs.push_back(run);
+            }
+            in_run = false;
+        }
+    }
+
+    result["area"] = area;
+    result["mode"] = mode;
+    result["min_length"] = min_length;
+    result["area_size"] = size;
+    result["matched_bytes"] = matched;
+    result["run_count"] = runs.size();
+    result["runs"] = runs;
+    result["tracking_enabled"] = m_core->GetMemory()->IsAccessTrackingEnabled();
+    return result;
+}
+
 std::vector<DisasmLine> DebugAdapter::GetDisassembly(u16 start_address, u16 end_address, int bank, bool resolve_symbols)
 {
     std::vector<DisasmLine> result;

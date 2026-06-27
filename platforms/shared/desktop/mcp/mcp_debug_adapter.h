@@ -118,6 +118,10 @@ public:
     std::vector<u8> ReadMemoryArea(int area, u32 offset, size_t size);
     void WriteMemoryArea(int area, u32 offset, const std::vector<u8>& data);
 
+    // Memory access map (read/write profiling: find genuinely-free RAM without breakpoints)
+    json AccessMapReset(bool enable);
+    json AccessMapDump(int area, const std::string& mode, u32 min_length);
+
     // Disassembly (using existing disassembler records)
     std::vector<DisasmLine> GetDisassembly(u16 start_address, u16 end_address, int bank = -1, bool resolve_symbols = false);
 
@@ -198,6 +202,7 @@ private:
 
     const char* GetBreakpointTypeName(int type);
     MemoryAreaInfo GetMemoryAreaInfo(int area);
+    u8* GetAccessMapForArea(int area, u32& size);
 };
 
 #endif /* MCP_DEBUG_ADAPTER_H */

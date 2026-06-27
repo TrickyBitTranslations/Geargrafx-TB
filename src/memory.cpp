@@ -18,6 +18,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include "memory.h"
 #include "huc6260.h"
 #include "huc6202.h"
@@ -52,6 +53,7 @@ Memory::Memory(HuC6260* huc6260, HuC6202* huc6202, HuC6280* huc6280, Media* medi
     m_card_ram_size = 0;
     m_card_ram_start = 0;
     m_card_ram_end = 0;
+    m_access_tracking_enabled = false;
 }
 
 Memory::~Memory()
@@ -375,6 +377,44 @@ Memory::MemoryBankType Memory::GetBankType(u8 bank)
         return MEMORY_BANK_TYPE_HARDWARE;
 
     return MEMORY_BANK_TYPE_UNUSED;
+}
+
+void Memory::ResetAccessMap()
+{
+    memset(m_wram_access, 0, sizeof(m_wram_access));
+    memset(m_card_ram_access, 0, sizeof(m_card_ram_access));
+    memset(m_cdrom_ram_access, 0, sizeof(m_cdrom_ram_access));
+    memset(m_backup_ram_access, 0, sizeof(m_backup_ram_access));
+}
+
+void Memory::SetAccessTrackingEnabled(bool enabled)
+{
+    m_access_tracking_enabled = enabled;
+}
+
+bool Memory::IsAccessTrackingEnabled()
+{
+    return m_access_tracking_enabled;
+}
+
+u8* Memory::GetWorkingRAMAccess()
+{
+    return m_wram_access;
+}
+
+u8* Memory::GetCardRAMAccess()
+{
+    return m_card_ram_access;
+}
+
+u8* Memory::GetCDROMRAMAccess()
+{
+    return m_cdrom_ram_access;
+}
+
+u8* Memory::GetBackupRAMAccess()
+{
+    return m_backup_ram_access;
 }
 
 void Memory::SaveRam(std::ostream &file)
