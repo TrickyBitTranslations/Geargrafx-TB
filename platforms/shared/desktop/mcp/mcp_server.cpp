@@ -757,10 +757,15 @@ json McpServer::BuildToolList()
     tools.push_back({
         {"name", "get_screenshot"},
         {"title", "Get Screenshot"},
-        {"description", "Capture current screen/frame/video output as PNG screenshot image."},
+        {"description", "Capture current screen/frame/video output as a PNG image. Optional integer scale (1-8, default 1) nearest-neighbour upscales the native low-res PCE output - use scale 4 to read fine sprite/tile/text detail."},
         {"inputSchema", {
             {"type", "object"},
-            {"properties", json::object()},
+            {"properties", {
+                {"scale", {
+                    {"type", "integer"},
+                    {"description", "Integer upscale factor 1-8 (default 1). 4 is good for inspecting sprites/text."}
+                }}
+            }},
             {"additionalProperties", false}
         }}
     });
@@ -2470,7 +2475,10 @@ json McpServer::ExecuteCommand(const std::string& toolName, const json& argument
     }
     else if (normalizedTool == "get_screenshot")
     {
-        return m_debugAdapter.GetScreenshot();
+        int scale = 1;
+        if (arguments.contains("scale"))
+            scale = arguments["scale"].get<int>();
+        return m_debugAdapter.GetScreenshot(scale);
     }
     // Media and state management
     else if (normalizedTool == "load_media")

@@ -130,7 +130,7 @@ EXTERN void emu_set_mouse_delta(int x, int y);
 EXTERN void emu_set_turbo(GG_Controllers controller, GG_Keys button, bool enabled);
 EXTERN void emu_set_turbo_speed(GG_Controllers controller, GG_Keys button, u8 speed);
 EXTERN void emu_save_screenshot(const char* file_path);
-EXTERN int emu_get_screenshot_png(unsigned char** out_buffer);
+EXTERN int emu_get_screenshot_png(unsigned char** out_buffer, int scale = 1);
 EXTERN int emu_get_sprite_png(int vdc, int sprite_index, unsigned char** out_buffer);
 EXTERN void emu_save_sprite(const char* file_path, int vdc, int index);
 EXTERN void emu_save_background(const char* file_path, int vdc);

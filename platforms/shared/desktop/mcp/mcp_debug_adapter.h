@@ -138,7 +138,7 @@ public:
     json GetArcadeCardStatus();
     json GetCDROMAudioStatus();
     json GetADPCMStatus();
-    json GetScreenshot();
+    json GetScreenshot(int scale = 1);
     json ListSprites(int vdc);
     json GetSpriteImage(int sprite_index, int vdc);
 

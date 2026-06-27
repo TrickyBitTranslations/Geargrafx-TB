@@ -1518,7 +1518,7 @@ static std::string base64_encode(const unsigned char* data, int size)
     return result;
 }
 
-json DebugAdapter::GetScreenshot()
+json DebugAdapter::GetScreenshot(int scale)
 {
     json result;
 
@@ -1528,13 +1528,18 @@ json DebugAdapter::GetScreenshot()
         return result;
     }
 
+    if (scale < 1)
+        scale = 1;
+    if (scale > 8)
+        scale = 8;
+
     // Get runtime info for screen dimensions
     GG_Runtime_Info runtime;
     m_core->GetRuntimeInfo(runtime);
 
-    // Get PNG screenshot from emu
+    // Get PNG screenshot from emu (optionally nearest-neighbour upscaled)
     unsigned char* png_buffer = NULL;
-    int png_size = emu_get_screenshot_png(&png_buffer);
+    int png_size = emu_get_screenshot_png(&png_buffer, scale);
 
     if (png_size == 0 || !png_buffer)
     {
@@ -1551,8 +1556,9 @@ json DebugAdapter::GetScreenshot()
     result["__mcp_image"] = true;
     result["data"] = base64_png;
     result["mimeType"] = "image/png";
-    result["width"] = runtime.screen_width;
-    result["height"] = runtime.screen_height;
+    result["width"] = runtime.screen_width * scale;
+    result["height"] = runtime.screen_height * scale;
+    result["scale"] = scale;
 
     return result;
 }

@@ -939,7 +939,7 @@ void emu_save_screenshot(const char* file_path)
     Log("Screenshot saved to %s", file_path);
 }
 
-int emu_get_screenshot_png(unsigned char** out_buffer)
+int emu_get_screenshot_png(unsigned char** out_buffer, int scale)
 {
     if (!geargrafx->GetMedia()->IsReady())
         return 0;
@@ -947,13 +947,46 @@ int emu_get_screenshot_png(unsigned char** out_buffer)
     GG_Runtime_Info runtime;
     emu_get_runtime(runtime);
 
-    int stride = runtime.screen_width * 4;
+    int width = runtime.screen_width;
+    int height = runtime.screen_height;
     int len = 0;
 
-    *out_buffer = stbi_write_png_to_mem(emu_frame_buffer, stride, 
-                                         runtime.screen_width, runtime.screen_height, 
-                                         4, &len);
+    if (scale < 1)
+        scale = 1;
+    if (scale > 8)
+        scale = 8;
 
+    if (scale == 1)
+    {
+        *out_buffer = stbi_write_png_to_mem(emu_frame_buffer, width * 4,
+                                             width, height, 4, &len);
+        return len;
+    }
+
+    // Nearest-neighbour upscale the RGBA framebuffer before encoding so callers
+    // (e.g. the MCP) can read fine sprite/tile/text detail in the native low-res output.
+    int scaled_width = width * scale;
+    int scaled_height = height * scale;
+    u8* scaled = new u8[(size_t)scaled_width * scaled_height * 4];
+
+    for (int y = 0; y < scaled_height; y++)
+    {
+        const u8* src_row = emu_frame_buffer + (size_t)(y / scale) * width * 4;
+        u8* dst_row = scaled + (size_t)y * scaled_width * 4;
+        for (int x = 0; x < scaled_width; x++)
+        {
+            const u8* src = src_row + (size_t)(x / scale) * 4;
+            u8* dst = dst_row + (size_t)x * 4;
+            dst[0] = src[0];
+            dst[1] = src[1];
+            dst[2] = src[2];
+            dst[3] = src[3];
+        }
+    }
+
+    *out_buffer = stbi_write_png_to_mem(scaled, scaled_width * 4,
+                                         scaled_width, scaled_height, 4, &len);
+    delete[] scaled;
     return len;
 }
 
