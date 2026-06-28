@@ -83,7 +83,9 @@ void rewind_reset(void)
         return;
     }
 
-    capacity = get_target_capacity();
+    // Do NOT pre-set `capacity` here: ensure_storage() compares the live target against the currently
+    // ALLOCATED capacity to decide whether to reallocate. Pre-setting it hides a runtime grow/shrink
+    // (buffer_seconds / frames_per_snapshot changed via the UI) and would reuse a wrong-sized buffer.
     ensure_storage();
 }
 

@@ -216,7 +216,22 @@ static void menu_geargrafx(void)
 
             ImGui::PushItemWidth(140.0f);
             ImGui::SliderFloat("Speed", &config_rewind.speed, 1.0f, 8.0f, "%.0fx");
+
+            ImGui::SliderInt("Buffer (seconds)", &config_rewind.buffer_seconds, 1, 60);
+            if (ImGui::IsItemDeactivatedAfterEdit())
+                rewind_reset();
+
+            ImGui::SliderInt("Frames per snapshot", &config_rewind.frames_per_snapshot, 1, 16);
+            if (ImGui::IsItemDeactivatedAfterEdit())
+                rewind_reset();
             ImGui::PopItemWidth();
+
+            int cap = rewind_get_capacity();
+            ImGui::Separator();
+            ImGui::Text("Holds %d snapshots (~%.0fs back)", cap,
+                (double)cap * config_rewind.frames_per_snapshot / 60.0);
+            ImGui::Text("Memory: %.0f MB", (double)rewind_get_memory_usage() / (1024.0 * 1024.0));
+            ImGui::TextDisabled("Longer = more RAM. Raise frames/snapshot\nto extend time cheaply (coarser steps).");
 
             ImGui::EndMenu();
         }

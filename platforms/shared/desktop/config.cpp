@@ -476,7 +476,7 @@ void config_read(void)
 
     config_rewind.enabled = read_bool("Rewind", "Enabled", true);
     config_rewind.buffer_seconds = read_int("Rewind", "BufferSeconds", 10);
-    config_rewind.buffer_seconds = CLAMP(config_rewind.buffer_seconds, 1, 10);
+    config_rewind.buffer_seconds = CLAMP(config_rewind.buffer_seconds, 1, 60);
     config_rewind.frames_per_snapshot = read_int("Rewind", "FramesPerSnapshot", 1);
     if (config_rewind.frames_per_snapshot < 1)
         config_rewind.frames_per_snapshot = 1;

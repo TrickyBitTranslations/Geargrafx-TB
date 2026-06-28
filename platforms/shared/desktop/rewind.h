@@ -28,9 +28,11 @@
     #define EXTERN extern
 #endif
 
-// Absolute hard cap for the ring buffer. Effective capacity is derived from
-// config_rewind (buffer_seconds / frames_per_snapshot) and clamped to this.
-#define REWIND_MAX_SNAPSHOTS        600
+// Absolute hard cap for the ring buffer (sizes the static slot-size table). Effective capacity is
+// derived from config_rewind (buffer_seconds / frames_per_snapshot) and clamped to this. Each slot
+// holds a full save state + a screenshot (~2 MB), so memory ~= capacity * slot_size - allocations
+// that don't fit fail gracefully (rewind stays at its previous size). 3600 = up to 60 s at 1 fps/snap.
+#define REWIND_MAX_SNAPSHOTS        3600
 
 EXTERN bool rewind_init(void);
 EXTERN void rewind_destroy(void);
